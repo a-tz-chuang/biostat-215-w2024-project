@@ -1,0 +1,39 @@
+---
+title: "Biostat M215 Final Project"
+author: "Rina Arputhasamy, Andrew Chuang, Carolyn Winskill, Kyle Wu"
+date: "2024-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Biostatistics M215: Final Project
+
+## Libraries: 
+```{r}
+#Relevant libraries:
+library(survival)
+library(PAmeasures)
+library(tidyverse)
+library(kableExtra)
+library(pec)
+data_directory <- "functions/"
+source(paste0(data_directory, "pam.survreg.update.R"))
+```
+
+## Dataset:
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
