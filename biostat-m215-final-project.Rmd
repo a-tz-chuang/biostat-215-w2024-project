@@ -25,15 +25,49 @@ source(paste0(data_directory, "pam.survreg.update.R"))
 
 ## Dataset:
 ```{r cars}
-summary(cars)
+data(cancer, package = 'survival')
 ```
 
-## Including Plots
+## Prediction Accuracy Measures
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+### Cox PH and PAM: 
+```{r}
+# Fit a multiple Cox PH model with age and edema
+fit.coxph <- coxph(Surv(dtime, death) ~ age + meno + size + grade + nodes + pgr + er + hormon + chemo, 
+                   data = rotterdam, x=TRUE,y=TRUE)
+summary(fit.coxph)
+# R.squared and L.squared of Cox PH model
+pam.coxph(fit.coxph)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+### Exponential AFT Model: 
+```{r}
+fit.exp <- survreg(Surv(dtime, death) ~ age + meno + grade + nodes + pgr + er + hormon + chemo + as.factor(tester), 
+                   data = rotterdam, dist="exponential", x=TRUE, y=TRUE)
+summary(fit.exp)
+# R.squared and L.squared of exponential model
+pam.survreg(fit.exp)
+```
+
+### Lognormal AFT Model: 
+```{r}
+fit.lognormal <- survreg(Surv(dtime, death) ~ age + meno + grade + nodes + pgr + er + hormon + chemo, 
+                   data = rotterdam, dist="lognormal", x=TRUE, y=TRUE)
+summary(fit.lognormal)
+# R.squared and L.squared of the lognormal model
+pam.survreg(fit.lognormal)
+```
+
+```{r}
+data(smarto)
+```
+
+```{r}
+fit.lognormal.smarto <- survreg(Surv(TEVENT, EVENT) ~ ., 
+                   data = smarto, dist="lognormal", x=TRUE, y=TRUE)
+summary(fit.lognormal.smarto)
+# R.squared and L.squared of exponential model
+pam.survreg(fit.lognormal.smarto)
+```
+
