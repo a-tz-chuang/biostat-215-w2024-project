@@ -28,7 +28,7 @@ source(paste0(data_directory, "pam.survreg.update.R"))
 data(cancer, package = 'survival')
 ```
 
-## Prediction Accuracy Measures
+## Prediction Accuracy Measures (Rotterdam)
 
 ### Cox PH and PAM: 
 ```{r}
@@ -43,11 +43,11 @@ pam.coxph(fit.coxph)
 
 ### Exponential AFT Model: 
 ```{r}
-fit.exp <- survreg(Surv(dtime, death) ~ age + meno + grade + nodes + pgr + er + hormon + chemo + as.factor(tester), 
-                   data = rotterdam, dist="exponential", x=TRUE, y=TRUE)
-summary(fit.exp)
-# R.squared and L.squared of exponential model
-pam.survreg(fit.exp)
+# fit.exp <- survreg(Surv(dtime, death) ~ age + meno + grade + nodes + pgr + er + hormon + chemo + as.factor(tester), 
+#                    data = rotterdam, dist="exponential", x=TRUE, y=TRUE)
+# summary(fit.exp)
+# # R.squared and L.squared of exponential model
+# pam.survreg(fit.exp)
 ```
 
 ### Lognormal AFT Model: 
@@ -59,15 +59,45 @@ summary(fit.lognormal)
 pam.survreg(fit.lognormal)
 ```
 
+## Prediction Accuracy Measures (SMART Study Data)
+
 ```{r}
 data(smarto)
 ```
 
+### Cox PH and PAM: 
+```{r}
+# Fit a multiple Cox PH model with age and edema
+fit.coxph.smart <- coxph(Surv(TEVENT, EVENT) ~ ., 
+                   data = smarto, x=TRUE,y=TRUE)
+summary(fit.coxph.smart)
+# R.squared and L.squared of Cox PH model
+pam.coxph(fit.coxph.smart)
+```
+
+### Exponential AFT Model (SMART):
+```{r}
+fit.exp.smarto <- survreg(Surv(TEVENT, EVENT) ~ ., 
+                   data = smarto, dist="exponential", x=TRUE, y=TRUE)
+summary(fit.exp.smarto)
+# R.squared and L.squared of exponential model
+pam.survreg(fit.exp.smarto)
+```
+
+### Lognormal AFT Model (SMART):
 ```{r}
 fit.lognormal.smarto <- survreg(Surv(TEVENT, EVENT) ~ ., 
                    data = smarto, dist="lognormal", x=TRUE, y=TRUE)
 summary(fit.lognormal.smarto)
-# R.squared and L.squared of exponential model
+# R.squared and L.squared of lognormal model
 pam.survreg(fit.lognormal.smarto)
+```
+### Calibration Plot for Cox PH (SMART Data):
+
+```{r}
+t <- rotterdam$dtime %>% mean
+
+calPlot(fit.coxph, time=t, data=rotterdam, method = "quantile", q=5,
+        bars=TRUE, type="survival", pseudo=FALSE)
 ```
 
