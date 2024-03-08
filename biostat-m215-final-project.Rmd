@@ -31,6 +31,7 @@ data(cancer, package = 'survival')
 ## Prediction Accuracy Measures (Rotterdam)
 
 ### Cox PH and PAM: 
+
 ```{r}
 # Fit a multiple Cox PH model with age and edema
 fit.coxph <- coxph(Surv(dtime, death) ~ age + meno + size + grade + nodes + pgr + er + hormon + chemo, 
@@ -40,23 +41,26 @@ summary(fit.coxph)
 pam.coxph(fit.coxph)
 ```
 
-
 ### Exponential AFT Model: 
+
 ```{r}
-# fit.exp <- survreg(Surv(dtime, death) ~ age + meno + grade + nodes + pgr + er + hormon + chemo + as.factor(tester), 
-#                    data = rotterdam, dist="exponential", x=TRUE, y=TRUE)
-# summary(fit.exp)
-# # R.squared and L.squared of exponential model
-# pam.survreg(fit.exp)
+fit.exp <- survreg(Surv(dtime, death) ~ age + meno + size + 
+                     grade + nodes + pgr + er + hormon + chemo,
+                   data = rotterdam, dist="exponential", x=TRUE, y=TRUE)
+summary(fit.exp)
+# R.squared and L.squared of exponential model
+# when data has factors (size), need to pass data directly as shown below
+pam.survreg(fit.exp, x.mat = rotterdam)
 ```
 
 ### Lognormal AFT Model: 
 ```{r}
-fit.lognormal <- survreg(Surv(dtime, death) ~ age + meno + grade + nodes + pgr + er + hormon + chemo, 
+fit.lognormal <- survreg(Surv(dtime, death) ~ age + meno + size + 
+                           grade + nodes + pgr + er + hormon + chemo, 
                    data = rotterdam, dist="lognormal", x=TRUE, y=TRUE)
 summary(fit.lognormal)
 # R.squared and L.squared of the lognormal model
-pam.survreg(fit.lognormal)
+pam.survreg(fit.lognormal, x.mat = rotterdam)
 ```
 
 ## Prediction Accuracy Measures (SMART Study Data)
