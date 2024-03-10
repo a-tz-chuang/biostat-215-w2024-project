@@ -51,6 +51,7 @@ fit.coxph <- coxph(Surv(dtime, death) ~ age + meno + size + grade + nodes + pgr 
 summary(fit.coxph)
 # R.squared and L.squared of Cox PH model
 pam.coxph(fit.coxph)
+concordance(fit.coxph, timewt = "n/G2")$concordance
 ```
 
 ### Exponential AFT Model: 
@@ -64,6 +65,7 @@ summary(fit.exp)
 # R.squared and L.squared of exponential model
 # when data has factors (size), need to pass data directly as shown below
 pam.survreg(fit.exp, x.mat = rotterdam_train)
+concordance(fit.exp, timewt = "n/G2")$concordance
 ```
 
 ### Lognormal AFT Model: 
@@ -76,50 +78,63 @@ fit.lognormal <- survreg(Surv(dtime, death) ~ age + meno + size +
 summary(fit.lognormal)
 # R.squared and L.squared of the lognormal model
 pam.survreg(fit.lognormal, x.mat = rotterdam_train)
+concordance(fit.lognormal, timewt = "n/G2")$concordance
 ```
 
 ## Model Selection
+
+We first consider variable selection under the Cox proportional hazards model.
 
 Stepwise forward selection via AIC:
 ```{r AIC_selection}
 full_model_formula <- Surv(dtime, death) ~ age + meno + size + 
                            grade + nodes + pgr + er + hormon + chemo
 null_model_formula <- Surv(dtime, death) ~ 1
-rot_sfAIC <- stepAIC(survreg(null_model_formula, data = rotterdam_train,
-                             dist = "lognormal", x = TRUE, y = TRUE),
+rot_sfAIC <- stepAIC(coxph(null_model_formula, data = rotterdam_train,
+                            x = TRUE, y = TRUE),
                      full_model_formula,
                      direction = "forward", k = 2)
 summary(rot_sfAIC)
+pam.coxph(rot_sfAIC)
+concordance(rot_sfAIC, timewt = "n/G2")$concordance
 ```
 
 Stepwise backward selection via AIC:
 ```{r AIC_selection}
-rot_sbAIC <- stepAIC(survreg(full_model_formula,
+rot_sbAIC <- stepAIC(coxph(full_model_formula,
                              data = rotterdam_train,
-                             dist = "lognormal", x = TRUE, y = TRUE),
+                             x = TRUE, y = TRUE),
                      full_model_formula,
                      direction = "backward", k = 2)
 
 summary(rot_sbAIC)
+pam.coxph(rot_sbAIC)
+concordance(rot_sbAIC, timewt = "n/G2")$concordance
 ```
+
+Forward and backward selection via AIC result in the same model.
 
 Stepwise forward selection via BIC:
 ```{r BIC_forward_selection}
-rot_sfBIC <- stepAIC(survreg(null_model_formula, data = rotterdam_train,
-                             dist = "lognormal", x = TRUE, y = TRUE),
+rot_sfBIC <- stepAIC(coxph(null_model_formula, data = rotterdam_train,
+                           x = TRUE, y = TRUE),
                      full_model_formula,
                      direction = "forward", k = log(n))
 summary(rot_sfBIC)
+pam.coxph(rot_sfBIC)
+concordance(rot_sfBIC, timewt = "n/G2")$concordance
 ```
 
 Stepwise backward selection via BIC:
 ```{r BIC_backward_selection}
-rot_sbBIC <- stepAIC(survreg(full_model_formula,
-                             data = rotterdam_train,
-                             dist = "lognormal", x = TRUE, y = TRUE),
+rot_sbBIC <- stepAIC(coxph(full_model_formula,
+                           data = rotterdam_train,
+                           x = TRUE, y = TRUE),
                      full_model_formula,
                      direction = "backward", k = log(n))
 summary(rot_sbBIC)
+pam.coxph(rot_sbBIC)
+concordance(rot_sbBIC, timewt = "n/G2")$concordance
 ```
 
 ## Prediction Accuracy Measures (SMART Study Data)
