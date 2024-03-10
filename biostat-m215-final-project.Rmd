@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Biostatistics M215: Final Project
 
 ## Libraries: 
+
 ```{r}
 #Relevant libraries:
 library(survival)
@@ -19,23 +20,34 @@ library(PAmeasures)
 library(tidyverse)
 library(kableExtra)
 library(pec)
+library(MASS)
 data_directory <- "functions/"
 source(paste0(data_directory, "pam.survreg.update.R"))
 ```
 
-## Dataset:
-```{r cars}
-data(cancer, package = 'survival')
+## Data Preparation
+
+```{r data_load}
+data(cancer, package = "survival")
+n <- nrow(rotterdam)
 ```
 
-## Prediction Accuracy Measures (Rotterdam)
+```{r train_test_split}
+# train-test split
+test_p <- 0.15
+test_indx <- sample(n, n * test_p)
+rotterdam_test <- rotterdam[test_indx,]
+rotterdam_train <- rotterdam[!seq_len(n) %in% test_indx,]
+```
+
+## Full Models and Prediction Accuracy Measures (Rotterdam)
 
 ### Cox PH and PAM: 
 
 ```{r}
 # Fit a multiple Cox PH model with age and edema
 fit.coxph <- coxph(Surv(dtime, death) ~ age + meno + size + grade + nodes + pgr + er + hormon + chemo, 
-                   data = rotterdam, x=TRUE,y=TRUE)
+                   data = rotterdam_train, x=TRUE,y=TRUE)
 summary(fit.coxph)
 # R.squared and L.squared of Cox PH model
 pam.coxph(fit.coxph)
@@ -46,21 +58,68 @@ pam.coxph(fit.coxph)
 ```{r}
 fit.exp <- survreg(Surv(dtime, death) ~ age + meno + size + 
                      grade + nodes + pgr + er + hormon + chemo,
-                   data = rotterdam, dist="exponential", x=TRUE, y=TRUE)
+                   data = rotterdam_train, dist="exponential",
+                   x = TRUE, y = TRUE)
 summary(fit.exp)
 # R.squared and L.squared of exponential model
 # when data has factors (size), need to pass data directly as shown below
-pam.survreg(fit.exp, x.mat = rotterdam)
+pam.survreg(fit.exp, x.mat = rotterdam_train)
 ```
 
 ### Lognormal AFT Model: 
+
 ```{r}
 fit.lognormal <- survreg(Surv(dtime, death) ~ age + meno + size + 
                            grade + nodes + pgr + er + hormon + chemo, 
-                   data = rotterdam, dist="lognormal", x=TRUE, y=TRUE)
+                   data = rotterdam_train, dist="lognormal",
+                   x = TRUE, y = TRUE)
 summary(fit.lognormal)
 # R.squared and L.squared of the lognormal model
-pam.survreg(fit.lognormal, x.mat = rotterdam)
+pam.survreg(fit.lognormal, x.mat = rotterdam_train)
+```
+
+## Model Selection
+
+Stepwise forward selection via AIC:
+```{r AIC_selection}
+full_model_formula <- Surv(dtime, death) ~ age + meno + size + 
+                           grade + nodes + pgr + er + hormon + chemo
+null_model_formula <- Surv(dtime, death) ~ 1
+rot_sfAIC <- stepAIC(survreg(null_model_formula, data = rotterdam_train,
+                             dist = "lognormal", x = TRUE, y = TRUE),
+                     full_model_formula,
+                     direction = "forward", k = 2)
+summary(rot_sfAIC)
+```
+
+Stepwise backward selection via AIC:
+```{r AIC_selection}
+rot_sbAIC <- stepAIC(survreg(full_model_formula,
+                             data = rotterdam_train,
+                             dist = "lognormal", x = TRUE, y = TRUE),
+                     full_model_formula,
+                     direction = "backward", k = 2)
+
+summary(rot_sbAIC)
+```
+
+Stepwise forward selection via BIC:
+```{r BIC_forward_selection}
+rot_sfBIC <- stepAIC(survreg(null_model_formula, data = rotterdam_train,
+                             dist = "lognormal", x = TRUE, y = TRUE),
+                     full_model_formula,
+                     direction = "forward", k = log(n))
+summary(rot_sfBIC)
+```
+
+Stepwise backward selection via BIC:
+```{r BIC_backward_selection}
+rot_sbBIC <- stepAIC(survreg(full_model_formula,
+                             data = rotterdam_train,
+                             dist = "lognormal", x = TRUE, y = TRUE),
+                     full_model_formula,
+                     direction = "backward", k = log(n))
+summary(rot_sbBIC)
 ```
 
 ## Prediction Accuracy Measures (SMART Study Data)
