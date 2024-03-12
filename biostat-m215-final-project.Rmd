@@ -1,7 +1,7 @@
 ---
 title: "Biostat M215 Final Project"
 author: "Rina Arputhasamy, Andrew Chuang, Carolyn Winskill, Kyle Wu"
-date: "2024-03-07"
+date: "2024-03-11"
 output: html_document
 ---
 
@@ -35,10 +35,36 @@ n <- nrow(rotterdam)
 ```{r train_test_split}
 # train-test split
 test_p <- 0.15
+set.seed(215) #cw added
 test_indx <- sample(n, n * test_p)
 rotterdam_test <- rotterdam[test_indx,]
 rotterdam_train <- rotterdam[!seq_len(n) %in% test_indx,]
 ```
+
+## Descriptive Statistics
+
+CW: create a summary table of all potential predictors in dataset (means/medians, frequencies)
+
+## Kaplan Meier Plots
+
+```{r}
+km<-survfit(Surv(dtime, death)~1,conf.type="log-log",data=rotterdam)
+summary(km)
+
+plot(km,conf.int=F,mark.time=F,
+     xlab="time (days)",
+     ylab="probability",
+     main="Kaplan-Meier estimates of time to death")
+```
+
+CW: make plot more visually appealing? add KM plots stratified by predictors like menopausal status, tumor size, differentiation grade, hormonal treatment?
+
+## Log-rank tests 
+
+```{r}
+survdiff(Surv(dtime, death)~meno,data=rotterdam)
+```
+CW: need univariate Cox models to get unadjusted hazard ratios?
 
 ## Full Models and Prediction Accuracy Measures (Rotterdam)
 
@@ -66,6 +92,20 @@ summary(fit.exp)
 # when data has factors (size), need to pass data directly as shown below
 pam.survreg(fit.exp, x.mat = rotterdam_train)
 concordance(fit.exp, timewt = "n/G2")$concordance
+```
+
+### Weibuill AFT Model: 
+
+```{r}
+fit.wei <- survreg(Surv(dtime, death) ~ age + meno + size + 
+                     grade + nodes + pgr + er + hormon + chemo,
+                   data = rotterdam_train, dist="weibull",
+                   x = TRUE, y = TRUE)
+summary(fit.wei)
+# R.squared and L.squared of exponential model
+# when data has factors (size), need to pass data directly as shown below
+pam.survreg(fit.wei, x.mat = rotterdam_train)
+concordance(fit.wei, timewt = "n/G2")$concordance
 ```
 
 ### Lognormal AFT Model: 
@@ -137,40 +177,10 @@ pam.coxph(rot_sbBIC)
 concordance(rot_sbBIC, timewt = "n/G2")$concordance
 ```
 
-## Prediction Accuracy Measures (SMART Study Data)
+CW note: removed models for SMART study data
 
-```{r}
-data(smarto)
-```
 
-### Cox PH and PAM: 
-```{r}
-# Fit a multiple Cox PH model with age and edema
-fit.coxph.smart <- coxph(Surv(TEVENT, EVENT) ~ ., 
-                   data = smarto, x=TRUE,y=TRUE)
-summary(fit.coxph.smart)
-# R.squared and L.squared of Cox PH model
-pam.coxph(fit.coxph.smart)
-```
-
-### Exponential AFT Model (SMART):
-```{r}
-fit.exp.smarto <- survreg(Surv(TEVENT, EVENT) ~ ., 
-                   data = smarto, dist="exponential", x=TRUE, y=TRUE)
-summary(fit.exp.smarto)
-# R.squared and L.squared of exponential model
-pam.survreg(fit.exp.smarto)
-```
-
-### Lognormal AFT Model (SMART):
-```{r}
-fit.lognormal.smarto <- survreg(Surv(TEVENT, EVENT) ~ ., 
-                   data = smarto, dist="lognormal", x=TRUE, y=TRUE)
-summary(fit.lognormal.smarto)
-# R.squared and L.squared of lognormal model
-pam.survreg(fit.lognormal.smarto)
-```
-### Calibration Plot for Cox PH (SMART Data):
+### Calibration Plot for Cox PH:
 
 ```{r}
 t <- rotterdam$dtime %>% mean
@@ -179,3 +189,4 @@ calPlot(fit.coxph, time=t, data=rotterdam, method = "quantile", q=5,
         bars=TRUE, type="survival", pseudo=FALSE)
 ```
 
+CW: write function for calibration plot that can do both Cox and AFT models
