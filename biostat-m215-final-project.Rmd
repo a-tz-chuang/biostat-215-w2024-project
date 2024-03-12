@@ -177,7 +177,64 @@ pam.coxph(rot_sbBIC)
 concordance(rot_sbBIC, timewt = "n/G2")$concordance
 ```
 
-CW note: removed models for SMART study data
+We fit a LASSO model and attach the resulting coefficients to a coxph object so that we can call survival::concordance:
+
+```{r}
+library(ncvreg)
+X <- rotterdam_train[, c("age", "meno", "size", "grade", "nodes", "pgr",
+                         "er", "hormon", "chemo")]
+X$`size20-50` <- ifelse(X$size == "20-50", 1, 0)
+X$`size>50` <- ifelse(X$size == ">50", 1, 0)
+X$size <- NULL
+y <- Surv(rotterdam_train$dtime, rotterdam_train$death)
+rot_cvlasso <- cv.ncvsurv(X, y,
+                          nfolds = 10, nlambda = 10, penalty = "lasso")
+rot_lasso <- ncvsurv(X, y, penalty = "lasso", lambda = rot_cvlasso$lambda.min)
+lasso_beta <- coef(rot_lasso)
+names(lasso_beta) <- colnames(X)
+lasso_temp <- coxph(full_model_formula, data = rotterdam_train)
+lasso_beta <- lasso_beta[match(names(coef(lasso_temp)), names(lasso_beta))]
+lasso_temp$coefficients <- lasso_beta
+concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_train)
+```
+
+## Time-dependent Covariates
+
+Suppose we add the time-dependent relapse indicator as a covariate.
+
+```{r}
+cut_points <- sort(unique(rotterdam_train[rotterdam_train$death == 1,]$dtime))
+rottrain_t <- survSplit(Surv(dtime, death) ~ ., data = rotterdam_train,
+                   cut = cut_points, end = "end", start = "start")
+rottrain_t$has_relapsed <- rottrain_t$end >= rottrain_t$rtime & rottrain_t$recur == 1
+full_modelt_formula <- Surv(start, end, death) ~ age + meno + size + 
+  grade + nodes + pgr + 
+  er + hormon + chemo + has_relapsed
+rott_coxph <- coxph(full_modelt_formula, data = rottrain_t, x = TRUE, y = TRUE)
+rott_sbBIC <- stepAIC(rott_coxph,
+                      full_modelt_formula,
+                      direction = "backward", k = log(n))
+# model selection may take a while, resulting model is below
+# rott_sbBIC <- coxph(Surv(start, end, death) ~ age + size + nodes + pgr + has_relapsed,
+#                     data = rottrain_t, x = TRUE, y = TRUE)
+```
+
+```{r}
+cut_points <- sort(unique(rotterdam_train[rotterdam_test$death == 1,]$dtime))
+rottest_t <- survSplit(Surv(dtime, death) ~ ., data = rotterdam_test,
+                   cut = cut_points, end = "end", start = "start")
+rottest_t$has_relapsed <- rottest_t$end >= rottest_t$rtime & rottest_t$recur == 1
+```
+
+
+### Evaluation on Test Set
+
+```{r}
+concordance(rot_sfAIC, timewt = "n/G2", newdata = rotterdam_test)
+concordance(rot_sfBIC, timewt = "n/G2", newdata = rotterdam_test)
+concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_test)
+concordance(rott_sbBIC, newdata = rottest_t)
+```
 
 
 ### Calibration Plot for Cox PH:
