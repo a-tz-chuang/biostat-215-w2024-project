@@ -16,11 +16,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 #Relevant libraries:
 library(survival)
+library(descr)
 library(PAmeasures)
 library(tidyverse)
 library(kableExtra)
 library(pec)
 library(MASS)
+library(gtsummary)
+
 data_directory <- "functions/"
 source(paste0(data_directory, "pam.survreg.update.R"))
 ```
@@ -43,7 +46,28 @@ rotterdam_train <- rotterdam[!seq_len(n) %in% test_indx,]
 
 ## Descriptive Statistics
 
-CW: create a summary table of all potential predictors in dataset (means/medians, frequencies)
+```{r}
+rot.cont <- rotterdam %>% select(age, grade, nodes, pgr, er, rtime, dtime) 
+rot.cat <- rotterdam %>% select(year, meno, size, hormon, chemo, recur, death)
+
+c("mean", "sd", "min", "max") %>%
+  lapply(
+    function(.x) {
+      tbl_summary(
+        data = rot.cont, 
+        statistic = everything() ~ paste0("{", .x, "}"),
+        include = c(age, grade, nodes, pgr, er, rtime, dtime),
+        missing = "no",
+        type = list(grade ~ 'continuous')
+      ) %>%
+        modify_header(all_stat_cols() ~ glue::glue("**{.x}**"))
+    }
+  ) %>%
+  # Merge tables to get a column for each summary statistic
+  tbl_merge() %>%
+  modify_spanning_header(everything() ~ NA) %>%
+  modify_footnote(everything() ~ NA)
+```
 
 ## Kaplan Meier Plots
 
@@ -94,7 +118,7 @@ pam.survreg(fit.exp, x.mat = rotterdam_train)
 concordance(fit.exp, timewt = "n/G2")$concordance
 ```
 
-### Weibuill AFT Model: 
+### Weibull AFT Model: 
 
 ```{r}
 fit.wei <- survreg(Surv(dtime, death) ~ age + meno + size + 
