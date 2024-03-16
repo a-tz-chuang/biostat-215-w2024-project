@@ -201,7 +201,7 @@ pam.coxph(rot_sbBIC)
 concordance(rot_sbBIC, timewt = "n/G2")$concordance
 ```
 
-We fit a LASSO model and attach the resulting coefficients to a coxph object so that we can call survival::concordance:
+We fit a LASSO model (selecting penalty via 10-fold cross-validation) and attach the resulting coefficients to a coxph object so that we can call survival::concordance:
 
 ```{r}
 library(ncvreg)
@@ -235,12 +235,32 @@ full_modelt_formula <- Surv(start, end, death) ~ age + meno + size +
   grade + nodes + pgr + 
   er + hormon + chemo + has_relapsed
 rott_coxph <- coxph(full_modelt_formula, data = rottrain_t, x = TRUE, y = TRUE)
+```
+
+Cox multiplicative hazards model backward selection via BIC:
+
+```{r}
 rott_sbBIC <- stepAIC(rott_coxph,
                       full_modelt_formula,
                       direction = "backward", k = log(n))
-# model selection may take a while, resulting model is below
-# rott_sbBIC <- coxph(Surv(start, end, death) ~ age + size + nodes + pgr + has_relapsed,
-#                     data = rottrain_t, x = TRUE, y = TRUE)
+```
+
+Cox multiplicative hazards model forward selection via AIC:
+
+```{r}
+rott_sfAIC <- stepAIC(coxph(Surv(start, end, death) ~ has_relapsed, data = rottrain_t,
+                            x = TRUE, y = TRUE),
+                      full_modelt_formula,
+                      direction = "forward", k = 2)
+```
+
+
+```{r}
+# model selection may take a while, resulting models are below
+rott_sbBIC <- coxph(Surv(start, end, death) ~ age + size + nodes + pgr + has_relapsed,
+                    data = rottrain_t, x = TRUE, y = TRUE)
+rott_sfAIC <- coxph(Surv(start, end, death) ~ has_relapsed + age + nodes + pgr + size + chemo + grade,
+                    data = rottrain_t, x = TRUE, y = TRUE)
 ```
 
 ```{r}
@@ -250,16 +270,22 @@ rottest_t <- survSplit(Surv(dtime, death) ~ ., data = rotterdam_test,
 rottest_t$has_relapsed <- rottest_t$end >= rottest_t$rtime & rottest_t$recur == 1
 ```
 
-
 ### Evaluation on Test Set
 
 ```{r}
-concordance(rot_sfAIC, timewt = "n/G2", newdata = rotterdam_test)
-concordance(rot_sfBIC, timewt = "n/G2", newdata = rotterdam_test)
-concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_test)
-concordance(rott_sbBIC, newdata = rottest_t)
+print("Uno's Corrected C Statistics")
+print("Cox Proportional Hazards Stepwise Forward Selection via AIC")
+concordance(rot_sfAIC, timewt = "n/G2", newdata = rotterdam_test)$concordance
+print("Cox Proportional Hazards Stepwise Forward Selection via BIC")
+concordance(rot_sfBIC, timewt = "n/G2", newdata = rotterdam_test)$concordance
+print("Cox Proportional Hazards LASSO Estimate (10-fold CV)")
+concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_test)$concordance
+print("Harrel's C Statistics")
+print("Cox MH (Time-dependent Covariates), Stepwise Backward via BIC")
+concordance(rott_sbBIC, newdata = rottest_t)$concordance
+print("Cox MH (Time-dependent Covariates), Stepwise Forward via AIC")
+concordance(rott_sfAIC, newdata = rottest_t)$concordance
 ```
-
 
 ### Calibration Plot for Cox PH:
 
