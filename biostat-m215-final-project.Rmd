@@ -145,6 +145,22 @@ pam.survreg(fit.lognormal, x.mat = rotterdam_train)
 concordance(fit.lognormal, timewt = "n/G2")$concordance
 ```
 
+### Weibull AFT with Relapse Indicator
+
+Weibull AFT model forward selection via BIC:
+
+```{r}
+full_formula <- Surv(dtime, death) ~ age + meno + size + 
+  grade + nodes + pgr + er + hormon + chemo +
+  dtime:recur + recur
+relapse_weiAFT <- stepAIC(survreg(full_formula,
+                               data = rotterdam_train, dist = "weibull",
+                               x = TRUE, y = TRUE),
+                       full_formula,
+                       direction = "backward", k = log(n))
+pam.survreg(relapse_weiAFT, x.mat = rotterdam_train)
+```
+
 ## Model Selection
 
 We first consider variable selection under the Cox proportional hazards model.
@@ -222,7 +238,7 @@ lasso_temp$coefficients <- lasso_beta
 concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_train)
 ```
 
-## Time-dependent Covariates
+## Adding Relapse as Time-dependent Covariate
 
 Suppose we add the time-dependent relapse indicator as a covariate.
 
@@ -254,7 +270,6 @@ rott_sfAIC <- stepAIC(coxph(Surv(start, end, death) ~ has_relapsed, data = rottr
                       direction = "forward", k = 2)
 ```
 
-
 ```{r}
 # model selection may take a while, resulting models are below
 rott_sbBIC <- coxph(Surv(start, end, death) ~ age + size + nodes + pgr + has_relapsed,
@@ -280,6 +295,8 @@ print("Cox Proportional Hazards Stepwise Forward Selection via BIC")
 concordance(rot_sfBIC, timewt = "n/G2", newdata = rotterdam_test)$concordance
 print("Cox Proportional Hazards LASSO Estimate (10-fold CV)")
 concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_test)$concordance
+print("Weibull AFT (Relapse Included), Stepwise Backward via BIC")
+concordance(relapse_weiAFT, timewt = "n/G2", newdata = rotterdam_test)$concordance
 print("Harrel's C Statistics")
 print("Cox MH (Time-dependent Covariates), Stepwise Backward via BIC")
 concordance(rott_sbBIC, newdata = rottest_t)$concordance
