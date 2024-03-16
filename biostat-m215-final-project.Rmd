@@ -47,18 +47,17 @@ rotterdam_train <- rotterdam[!seq_len(n) %in% test_indx,]
 ## Descriptive Statistics
 
 ```{r}
-rot.cont <- rotterdam %>% select(age, grade, nodes, pgr, er, rtime, dtime) 
-rot.cat <- rotterdam %>% select(year, meno, size, hormon, chemo, recur, death)
+rot.cont <- rotterdam %>% select(age, nodes, pgr, er, rtime, dtime) 
+rot.cat <- rotterdam %>% select(year, meno, size, hormon, chemo, recur, death, grade)
 
-c("mean", "sd", "min", "max") %>%
+c("mean", "sd", "median", "min", "max") %>%
   lapply(
     function(.x) {
       tbl_summary(
         data = rot.cont, 
         statistic = everything() ~ paste0("{", .x, "}"),
-        include = c(age, grade, nodes, pgr, er, rtime, dtime),
-        missing = "no",
-        type = list(grade ~ 'continuous')
+        include = c(age, nodes, pgr, er, rtime, dtime),
+        missing = "no"
       ) %>%
         modify_header(all_stat_cols() ~ glue::glue("**{.x}**"))
     }
@@ -66,7 +65,8 @@ c("mean", "sd", "min", "max") %>%
   # Merge tables to get a column for each summary statistic
   tbl_merge() %>%
   modify_spanning_header(everything() ~ NA) %>%
-  modify_footnote(everything() ~ NA)
+  modify_footnote(everything() ~ NA) %>% 
+  modify_caption("**Table 1: Continuous Patient Characteristics**")
 ```
 
 ## Kaplan Meier Plots
