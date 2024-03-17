@@ -23,6 +23,7 @@ library(kableExtra)
 library(pec)
 library(MASS)
 library(gtsummary)
+library(SurvMetrics)
 
 data_directory <- "functions/"
 source(paste0(data_directory, "pam.survreg.update.R"))
@@ -291,8 +292,38 @@ concordance(rott_sfAIC, newdata = rottest_t)$concordance
 ```{r}
 t <- rotterdam$dtime %>% mean
 
-calPlot(fit.coxph, time=t, data=rotterdam_test, method = "quantile", q=5,
-        bars=TRUE, type="survival", pseudo=FALSE)
+# add method because calPlot depends on calling predictSurvProb method
+predictSurvProb.survreg <- function(object, newdata, times, ...) {
+  SurvMetrics::predictSurvProb2survreg(object, newdata, times, ...)
+}
+myCalPlotSettings <- function(model, legend.label = "Predicted survival") {
+  calPlot(model, time=t, data=rotterdam_test, method = "quantile", q=5,
+        bars=TRUE, type="survival", pseudo=FALSE,
+        legend.legend = c(legend.label, "Observed frequencies"))
+}
+myCalPlotSettings(fit.exp, "Exponential AFT Prediction")
 ```
+```{r}
+myCalPlotSettings(fit.wei, "Weibull AFT Prediction")
+```
+
+
+```{r}
+myCalPlotSettings(fit.lognormal, "Log-normal AFT Prediction")
+```
+
+```{r}
+myCalPlotSettings(fit.coxph, "Cox PH Prediction")
+```
+
+```{r}
+calPlot(list("Cox Regression" = fit.coxph), time=t, data=rotterdam_test,
+        type="risk")
+```
+
+
+
+
+
 
 CW: write function for calibration plot that can do both Cox and AFT models
