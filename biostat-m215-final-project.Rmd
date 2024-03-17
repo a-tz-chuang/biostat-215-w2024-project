@@ -145,28 +145,12 @@ pam.survreg(fit.lognormal, x.mat = rotterdam_train)
 concordance(fit.lognormal, timewt = "n/G2")$concordance
 ```
 
-### Weibull AFT with Relapse Indicator
-
-Weibull AFT model forward selection via BIC:
-
-```{r}
-full_formula <- Surv(dtime, death) ~ age + meno + size + 
-  grade + nodes + pgr + er + hormon + chemo +
-  dtime:recur + recur
-relapse_weiAFT <- stepAIC(survreg(full_formula,
-                               data = rotterdam_train, dist = "weibull",
-                               x = TRUE, y = TRUE),
-                       full_formula,
-                       direction = "backward", k = log(n))
-pam.survreg(relapse_weiAFT, x.mat = rotterdam_train)
-```
-
 ## Model Selection
 
 We first consider variable selection under the Cox proportional hazards model.
 
 Stepwise forward selection via AIC:
-```{r AIC_selection}
+```{r AIC_forward_selection}
 full_model_formula <- Surv(dtime, death) ~ age + meno + size + 
                            grade + nodes + pgr + er + hormon + chemo
 null_model_formula <- Surv(dtime, death) ~ 1
@@ -180,7 +164,7 @@ concordance(rot_sfAIC, timewt = "n/G2")$concordance
 ```
 
 Stepwise backward selection via AIC:
-```{r AIC_selection}
+```{r AIC_backward_selection}
 rot_sbAIC <- stepAIC(coxph(full_model_formula,
                              data = rotterdam_train,
                              x = TRUE, y = TRUE),
@@ -295,8 +279,6 @@ print("Cox Proportional Hazards Stepwise Forward Selection via BIC")
 concordance(rot_sfBIC, timewt = "n/G2", newdata = rotterdam_test)$concordance
 print("Cox Proportional Hazards LASSO Estimate (10-fold CV)")
 concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_test)$concordance
-print("Weibull AFT (Relapse Included), Stepwise Backward via BIC")
-concordance(relapse_weiAFT, timewt = "n/G2", newdata = rotterdam_test)$concordance
 print("Harrel's C Statistics")
 print("Cox MH (Time-dependent Covariates), Stepwise Backward via BIC")
 concordance(rott_sbBIC, newdata = rottest_t)$concordance
@@ -309,7 +291,7 @@ concordance(rott_sfAIC, newdata = rottest_t)$concordance
 ```{r}
 t <- rotterdam$dtime %>% mean
 
-calPlot(fit.coxph, time=t, data=rotterdam, method = "quantile", q=5,
+calPlot(fit.coxph, time=t, data=rotterdam_test, method = "quantile", q=5,
         bars=TRUE, type="survival", pseudo=FALSE)
 ```
 
