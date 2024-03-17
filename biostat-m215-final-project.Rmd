@@ -91,7 +91,7 @@ survdiff(Surv(dtime, death)~meno,data=rotterdam)
 ```
 CW: need univariate Cox models to get unadjusted hazard ratios?
 
-## Full Models and Prediction Accuracy Measures (Rotterdam)
+## Full Models and Prediction Accuracy Measures 
 
 ### Cox PH and PAM: 
 
@@ -148,6 +148,8 @@ concordance(fit.lognormal, timewt = "n/G2")$concordance
 
 ## Model Selection
 
+### Cox Regression
+
 We first consider variable selection under the Cox proportional hazards model.
 
 Stepwise forward selection via AIC:
@@ -202,6 +204,8 @@ pam.coxph(rot_sbBIC)
 concordance(rot_sbBIC, timewt = "n/G2")$concordance
 ```
 
+### Cox PH LASSO
+
 We fit a LASSO model (selecting penalty via 10-fold cross-validation) and attach the resulting coefficients to a coxph object so that we can call survival::concordance:
 
 ```{r}
@@ -213,15 +217,20 @@ X$`size>50` <- ifelse(X$size == ">50", 1, 0)
 X$size <- NULL
 y <- Surv(rotterdam_train$dtime, rotterdam_train$death)
 rot_cvlasso <- cv.ncvsurv(X, y,
-                          nfolds = 10, nlambda = 10, penalty = "lasso")
+                          nfolds = 10, nlambda = 50, penalty = "lasso")
 rot_lasso <- ncvsurv(X, y, penalty = "lasso", lambda = rot_cvlasso$lambda.min)
 lasso_beta <- coef(rot_lasso)
 names(lasso_beta) <- colnames(X)
-lasso_temp <- coxph(full_model_formula, data = rotterdam_train)
+lasso_temp <- coxph(full_model_formula, data = rotterdam_train,
+                    x = TRUE, y = TRUE)
 lasso_beta <- lasso_beta[match(names(coef(lasso_temp)), names(lasso_beta))]
 lasso_temp$coefficients <- lasso_beta
 concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_train)
 ```
+
+### AFT
+
+ADD AFT variable selection here
 
 ## Adding Relapse as Time-dependent Covariate
 
@@ -290,16 +299,16 @@ concordance(rott_sfAIC, newdata = rottest_t)$concordance
 ### Calibration Plot for Cox PH:
 
 ```{r}
-t <- rotterdam$dtime %>% mean
+t <- rotterdam_train$dtime %>% mean
 
 # add method because calPlot depends on calling predictSurvProb method
 predictSurvProb.survreg <- function(object, newdata, times, ...) {
   SurvMetrics::predictSurvProb2survreg(object, newdata, times, ...)
 }
-myCalPlotSettings <- function(model, legend.label = "Predicted survival") {
-  calPlot(model, time=t, data=rotterdam_test, method = "quantile", q=5,
-        bars=TRUE, type="survival", pseudo=FALSE,
-        legend.legend = c(legend.label, "Observed frequencies"))
+myCalPlotSettings <- function(model, legend.label = "Predicted survival", ...) {
+  pec::calPlot(model, time=t, data=rotterdam_test, method = "quantile",
+               q = 10, bars=TRUE, type="survival", pseudo=FALSE,
+               legend.legend = c(legend.label, "Observed frequencies"), ...)
 }
 myCalPlotSettings(fit.exp, "Exponential AFT Prediction")
 ```
@@ -314,6 +323,9 @@ myCalPlotSettings(fit.lognormal, "Log-normal AFT Prediction")
 
 ```{r}
 myCalPlotSettings(fit.coxph, "Cox PH Prediction")
+```
+```{r}
+myCalPlotSettings(lasso_temp, "LASSO", formula = full_model_formula)
 ```
 
 ```{r}
