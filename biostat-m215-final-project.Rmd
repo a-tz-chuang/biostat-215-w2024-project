@@ -230,7 +230,20 @@ concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_train)
 
 ### AFT
 
-ADD AFT variable selection here
+#### Weibull AFT
+
+```{r}
+full_model_formula <- Surv(dtime, death) ~ age*chemo + meno + size*nodes + 
+  grade + pgr + er*hormon
+weiAFT_sbAIC <- stepAIC(survreg(full_model_formula,
+                                data = rotterdam_train, dist="weibull",
+                                x = TRUE, y = TRUE),
+                        data = rotterdam_train,
+                        full_model_formula,
+                        direction = "backward", k = 2)
+```
+
+ADD more AFT variable selection here
 
 ## Adding Relapse as Time-dependent Covariate
 
@@ -283,12 +296,15 @@ rottest_t$has_relapsed <- rottest_t$end >= rottest_t$rtime & rottest_t$recur == 
 ## PAM Evaluation on Test Set
 
 ```{r}
+weiAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(weiAFT_sbAIC,
+                                                   x.mat = rotterdam_train)))
 R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
   as.numeric(unlist(pam.coxph(x)))
 }) %>% 
   do.call(rbind, .) %>%
   # cannot compute R2/L2 for time-dependent models?
   rbind(matrix(rep(NA, 4), 2, 2)) %>% 
+  rbind(weiAFT_sbAIC_R2L2) %>% 
   as.data.frame()
 colnames(R2L2_stats) <- c("R2_squared", "L2_squared")
 PA_stats <- data.frame(
@@ -296,10 +312,11 @@ PA_stats <- data.frame(
     "Cox Regression Stepwise Forward Selection via AIC",
     "Cox Regression Stepwise Forward Selection via BIC",
     "Cox Regression LASSO Estimate (10-fold CV)",
+    "Weibull AFT, Stepwise Backward via AIC",
     "Cox MH (Time-dependent Relapse), Stepwise Backward via BIC",
     "Cox MH (Time-dependent Relapse), Stepwise Forward via AIC"
   ),
-  C_type = c("uno", "uno", "uno", "harrel", "harrel"),
+  C_type = c("uno", "uno", "uno", "harrel", "harrel", "uno"),
   C_value = c(
     concordance(rot_sfAIC, timewt = "n/G2",
                 newdata = rotterdam_test)$concordance,
@@ -308,11 +325,14 @@ PA_stats <- data.frame(
     concordance(lasso_temp, timewt = "n/G2",
                 newdata = rotterdam_test)$concordance,
     concordance(rott_sbBIC, newdata = rottest_t)$concordance,
-    concordance(rott_sfAIC, newdata = rottest_t)$concordance
+    concordance(rott_sfAIC, newdata = rottest_t)$concordance,
+    concordance(weiAFT_sbAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance
   ),
   R2L2_stats
 )
-PA_stats
+rownames(PA_stats) <- NULL
+print(PA_stats)
 ```
 
 ### Calibration Plot for Cox PH:
@@ -320,7 +340,8 @@ PA_stats
 ```{r}
 t <- rotterdam_train$dtime %>% mean
 
-# add method because calPlot depends on calling predictSurvProb method
+# link method to SurvMetrics function because calPlot depends on calling 
+# predictSurvProb method specifically >:(
 predictSurvProb.survreg <- function(object, newdata, times, ...) {
   SurvMetrics::predictSurvProb2survreg(object, newdata, times, ...)
 }
@@ -329,15 +350,10 @@ myCalPlotSettings <- function(model, legend.label = "Predicted survival", ...) {
                q = 10, bars=TRUE, type="survival", pseudo=FALSE,
                legend.legend = c(legend.label, "Observed frequencies"), ...)
 }
-myCalPlotSettings(fit.exp, "Exponential AFT Prediction")
-```
-```{r}
-myCalPlotSettings(fit.wei, "Weibull AFT Prediction")
 ```
 
-
 ```{r}
-myCalPlotSettings(fit.lognormal, "Log-normal AFT Prediction")
+myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction")
 ```
 
 ```{r}
