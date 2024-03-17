@@ -262,6 +262,7 @@ rott_sfAIC <- stepAIC(coxph(Surv(start, end, death) ~ has_relapsed, data = rottr
                             x = TRUE, y = TRUE),
                       full_modelt_formula,
                       direction = "forward", k = 2)
+# pam.coxph(rott_sfAIC)
 ```
 
 ```{r}
@@ -279,21 +280,39 @@ rottest_t <- survSplit(Surv(dtime, death) ~ ., data = rotterdam_test,
 rottest_t$has_relapsed <- rottest_t$end >= rottest_t$rtime & rottest_t$recur == 1
 ```
 
-### Evaluation on Test Set
+## PAM Evaluation on Test Set
 
 ```{r}
-print("Uno's Corrected C Statistics")
-print("Cox Proportional Hazards Stepwise Forward Selection via AIC")
-concordance(rot_sfAIC, timewt = "n/G2", newdata = rotterdam_test)$concordance
-print("Cox Proportional Hazards Stepwise Forward Selection via BIC")
-concordance(rot_sfBIC, timewt = "n/G2", newdata = rotterdam_test)$concordance
-print("Cox Proportional Hazards LASSO Estimate (10-fold CV)")
-concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_test)$concordance
-print("Harrel's C Statistics")
-print("Cox MH (Time-dependent Covariates), Stepwise Backward via BIC")
-concordance(rott_sbBIC, newdata = rottest_t)$concordance
-print("Cox MH (Time-dependent Covariates), Stepwise Forward via AIC")
-concordance(rott_sfAIC, newdata = rottest_t)$concordance
+R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
+  as.numeric(unlist(pam.coxph(x)))
+}) %>% 
+  do.call(rbind, .) %>%
+  # cannot compute R2/L2 for time-dependent models?
+  rbind(matrix(rep(NA, 4), 2, 2)) %>% 
+  as.data.frame()
+colnames(R2L2_stats) <- c("R2_squared", "L2_squared")
+PA_stats <- data.frame(
+  model = c(
+    "Cox Regression Stepwise Forward Selection via AIC",
+    "Cox Regression Stepwise Forward Selection via BIC",
+    "Cox Regression LASSO Estimate (10-fold CV)",
+    "Cox MH (Time-dependent Relapse), Stepwise Backward via BIC",
+    "Cox MH (Time-dependent Relapse), Stepwise Forward via AIC"
+  ),
+  C_type = c("uno", "uno", "uno", "harrel", "harrel"),
+  C_value = c(
+    concordance(rot_sfAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(rot_sfBIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(lasso_temp, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(rott_sbBIC, newdata = rottest_t)$concordance,
+    concordance(rott_sfAIC, newdata = rottest_t)$concordance
+  ),
+  R2L2_stats
+)
+PA_stats
 ```
 
 ### Calibration Plot for Cox PH:
