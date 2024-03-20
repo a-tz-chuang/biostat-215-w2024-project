@@ -70,6 +70,20 @@ c("mean", "sd", "median", "min", "max") %>%
   modify_caption("**Table 1: Continuous Patient Characteristics**")
 ```
 
+```{r}
+rot.cat %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} / {N} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing_text = "(Missing)"
+  ) %>%
+  modify_caption("**Table 2: Categorical Patient Characteristics**")
+```
+
+
 ## Kaplan Meier Plots
 
 ```{r}
