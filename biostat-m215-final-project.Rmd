@@ -467,19 +467,6 @@ myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = fivey
 myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = tenyear)
 ```
 
-## Cox PH Calibration Plot
-
-```{r}
-myCalPlotSettings(fit.coxph, "Cox PH Prediction", time = t)
-myCalPlotSettings(fit.coxph, "Cox PH Prediction", time = fiveyear)
-myCalPlotSettings(fit.coxph, "Cox PH Prediction", time = tenyear)
-```
-
-```{r}
-calPlot(list("Cox Regression" = fit.coxph), time=t, data=rotterdam_test,
-        type="risk")
-```
-
 ### GREENWOOD-NAM-D'AGOSTINO CALIBRATION TEST
 
 double check this code some more
