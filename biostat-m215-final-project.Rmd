@@ -360,17 +360,17 @@ R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
   do.call(rbind, .) %>%
   # cannot compute R2/L2 for time-dependent models?
   rbind(matrix(rep(NA, 4), 2, 2)) %>% 
-  rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2) %>% 
+  rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2, .) %>% 
   as.data.frame()
 colnames(R2L2_stats) <- c("R2_squared", "L2_squared")
 PA_stats <- data.frame(
   model = c(
-    "Cox Regression Stepwise Forward Selection via AIC",
-    "Cox Regression Stepwise Forward Selection via BIC",
-    "Cox Regression LASSO Estimate (10-fold CV)",
     "Weibull AFT, Stepwise Backward via AIC",
     "Exponential AFT, Stepwise Backward via AIC",
     "Lognormal AFT, Stepwise Backward via AIC",
+    "Cox Regression Stepwise Forward Selection via AIC",
+    "Cox Regression Stepwise Forward Selection via BIC",
+    "Cox Regression LASSO Estimate (10-fold CV)",
     "Cox MH (Time-dependent Relapse), Stepwise Backward via BIC",
     "Cox MH (Time-dependent Relapse), Stepwise Forward via AIC"
   ),
