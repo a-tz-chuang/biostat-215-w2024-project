@@ -352,13 +352,17 @@ rottest_t$has_relapsed <- rottest_t$end >= rottest_t$rtime & rottest_t$recur == 
 ```{r}
 weiAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(weiAFT_sbAIC,
                                                    x.mat = rotterdam_train)))
+exAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(exAFT_sbAIC,
+                                                   x.mat = rotterdam_train)))
+lognormAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(lognormAFT_sbAIC,
+                                                       x.mat = rotterdam_train)))
 R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
   as.numeric(unlist(pam.coxph(x)))
 }) %>% 
   do.call(rbind, .) %>%
   # cannot compute R2/L2 for time-dependent models?
   rbind(matrix(rep(NA, 4), 2, 2)) %>% 
-  rbind(weiAFT_sbAIC_R2L2) %>% 
+  rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2) %>% 
   as.data.frame()
 colnames(R2L2_stats) <- c("R2_squared", "L2_squared")
 PA_stats <- data.frame(
@@ -367,10 +371,12 @@ PA_stats <- data.frame(
     "Cox Regression Stepwise Forward Selection via BIC",
     "Cox Regression LASSO Estimate (10-fold CV)",
     "Weibull AFT, Stepwise Backward via AIC",
+    "Exponential AFT, Stepwise Backward via AIC",
+    "Lognormal AFT, Stepwise Backward via AIC",
     "Cox MH (Time-dependent Relapse), Stepwise Backward via BIC",
     "Cox MH (Time-dependent Relapse), Stepwise Forward via AIC"
   ),
-  C_type = c("uno", "uno", "uno", "harrel", "harrel", "uno"),
+  C_type = c("uno", "uno", "uno", "uno", "uno", "uno", "harrel", "harrel"),
   C_value = c(
     concordance(rot_sfAIC, timewt = "n/G2",
                 newdata = rotterdam_test)$concordance,
@@ -378,10 +384,14 @@ PA_stats <- data.frame(
                 newdata = rotterdam_test)$concordance,
     concordance(lasso_temp, timewt = "n/G2",
                 newdata = rotterdam_test)$concordance,
-    concordance(rott_sbBIC, newdata = rottest_t)$concordance,
-    concordance(rott_sfAIC, newdata = rottest_t)$concordance,
     concordance(weiAFT_sbAIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance
+                newdata = rotterdam_test)$concordance,
+    concordance(exAFT_sbAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(lognormAFT_sbAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(rott_sbBIC, newdata = rottest_t)$concordance,
+    concordance(rott_sfAIC, newdata = rottest_t)$concordance
   ),
   R2L2_stats
 )
@@ -393,87 +403,78 @@ print(PA_stats)
 
 ```{r}
 t <- rotterdam_train$dtime %>% mean
-
+fiveyear<-5*365
+tenyear<-10*365
 # link method to SurvMetrics function because calPlot depends on calling 
 # predictSurvProb method specifically >:(
 predictSurvProb.survreg <- function(object, newdata, times, ...) {
   SurvMetrics::predictSurvProb2survreg(object, newdata, times, ...)
 }
-myCalPlotSettings <- function(model, legend.label = "Predicted survival", ...) {
-  pec::calPlot(model, time=t, data=rotterdam_test, method = "quantile",
+myCalPlotSettings <- function(model, legend.label = "Predicted survival",
+                              newdata = rotterdam_test, ...) {
+  pec::calPlot(model, data = newdata, method = "quantile",
                q = 10, bars=TRUE, type="survival", pseudo=FALSE,
-               legend.legend = c(legend.label, "Observed frequencies"), ...)
-}
-```
-
-```{r}
-fiveyear<-5*365
-tenyear<-10*365
-
-myCalPlotSettings5year <- function(model, legend.label = "Predicted survival", ...) {
-  pec::calPlot(model, time=fiveyear, data=rotterdam_test, method = "quantile",
-               q = 10, bars=TRUE, type="survival", pseudo=FALSE,
-               legend.legend = c(legend.label, "Observed frequencies"), ...)
-}
-
-myCalPlotSettings10year <- function(model, legend.label = "Predicted survival", ...) {
-  pec::calPlot(model, time=tenyear, data=rotterdam_test, method = "quantile",
-               q = 10, bars=TRUE, type="survival", pseudo=FALSE,
-               legend.legend = c(legend.label, "Observed frequencies"), ...)
+               legend.legend = c(legend.label, "Kaplan-Meier Estimate"), ...)
 }
 ```
 
 ## Weibull AFT Calibration Plots
 
 ```{r}
-myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction")
-myCalPlotSettings5year(weiAFT_sbAIC, "Weibull AFT Prediction")
-myCalPlotSettings10year(weiAFT_sbAIC, "Weibull AFT Prediction")
+myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = t)
+myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = fiveyear)
+myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = tenyear)
 ```
 
 ## Exponential AFT Calibration Plots
 
 ```{r}
-myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction")
-myCalPlotSettings5year(exAFT_sbAIC, "Exponential AFT Prediction")
-myCalPlotSettings10year(exAFT_sbAIC, "Exponential AFT Prediction")
+myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = t)
+myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = fiveyear)
+myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = tenyear)
 ```
 
 ## Lognormal AFT Calibration Plots
 
 ```{r}
-myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction")
-myCalPlotSettings5year(lognormAFT_sbAIC, "Lognormal AFT Prediction")
-myCalPlotSettings10year(lognormAFT_sbAIC, "Lognormal AFT Prediction")
+myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = t)
+myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = fiveyear)
+myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = tenyear)
 ```
 
 ## Cox LASSO Calibration Plots
 
 ```{r}
-myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",formula = full_model_formula)
-myCalPlotSettings5year(lasso_temp, "Cox LASSO Prediction",formula = full_model_formula)
-myCalPlotSettings10year(lasso_temp, "Cox LASSO Prediction",formula = full_model_formula)
+myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
+                  formula = full_model_formula, time = t)
+myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
+                  formula = full_model_formula, time = fiveyear)
+myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
+                  formula = full_model_formula, time = tenyear)
 ```
+
 ## Cox Stepwise Forward AIC Calibration Plots
 
 ```{r}
-myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction")
-myCalPlotSettings5year(rot_sfAIC, "Cox Stepwise Forward AIC Prediction")
-myCalPlotSettings10year(rot_sfAIC, "Cox Stepwise Forward AIC Prediction")
+myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = t)
+myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = fiveyear)
+myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = tenyear)
 ```
 
 ## Cox Stepwise Forward BIC Calibration Plots
 
 ```{r}
-myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction")
-myCalPlotSettings5year(rot_sfBIC, "Cox Stepwise Forward BIC Prediction")
-myCalPlotSettings10year(rot_sfBIC, "Cox Stepwise Forward BIC Prediction")
+myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = t)
+myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = fiveyear)
+myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = tenyear)
 ```
 
 ## Cox PH Calibration Plot
 
 ```{r}
-myCalPlotSettings(fit.coxph, "Cox PH Prediction")
+myCalPlotSettings(fit.coxph, "Cox PH Prediction", time = t)
+myCalPlotSettings(fit.coxph, "Cox PH Prediction", time = fiveyear)
+myCalPlotSettings(fit.coxph, "Cox PH Prediction", time = tenyear)
 ```
 
 ```{r}
