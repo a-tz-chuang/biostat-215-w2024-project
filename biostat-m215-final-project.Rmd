@@ -51,7 +51,7 @@ rotterdam_train <- rotterdam[!seq_len(n) %in% test_indx,]
 rot.cont <- rotterdam %>% select(age, nodes, pgr, er, rtime, dtime) 
 rot.cat <- rotterdam %>% select(year, meno, size, hormon, chemo, recur, death, grade)
 
-c("mean", "sd", "median", "min", "max") %>%
+tbl1 <- c("mean", "sd", "median", "min", "max") %>%
   lapply(
     function(.x) {
       tbl_summary(
@@ -68,10 +68,12 @@ c("mean", "sd", "median", "min", "max") %>%
   modify_spanning_header(everything() ~ NA) %>%
   modify_footnote(everything() ~ NA) %>% 
   modify_caption("**Table 1: Continuous Patient Characteristics**")
+#gt::gtsave(as_gt(tbl1), file = file.path(getwd(), "tbl1.png"))
+#tbl1
 ```
 
 ```{r}
-rot.cat %>%
+tbl2 <- rot.cat %>%
   tbl_summary(
     statistic = list(
       all_continuous() ~ "{mean} ({sd})",
@@ -81,6 +83,8 @@ rot.cat %>%
     missing_text = "(Missing)"
   ) %>%
   modify_caption("**Table 2: Categorical Patient Characteristics**")
+#gt::gtsave(as_gt(tbl2), file = file.path(getwd(), "tbl2.png"))
+#tbl2
 ```
 
 
