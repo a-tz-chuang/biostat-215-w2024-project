@@ -268,8 +268,6 @@ concordance(lasso_temp, timewt = "n/G2", newdata = rotterdam_train)
 #### Weibull AFT
 
 ```{r}
-full_model_formula <- Surv(dtime, death) ~ age*chemo + meno + size*nodes + 
-  grade + pgr + er*hormon
 weiAFT_sbAIC <- stepAIC(survreg(full_model_formula,
                                 data = rotterdam_train, dist="weibull",
                                 x = TRUE, y = TRUE),
@@ -316,7 +314,7 @@ rott_coxph <- coxph(full_modelt_formula, data = rottrain_t, x = TRUE, y = TRUE)
 
 Cox multiplicative hazards model backward selection via BIC:
 
-```{r}
+```{r, eval = FALSE}
 rott_sbBIC <- stepAIC(rott_coxph,
                       full_modelt_formula,
                       direction = "backward", k = log(n))
@@ -324,7 +322,7 @@ rott_sbBIC <- stepAIC(rott_coxph,
 
 Cox multiplicative hazards model forward selection via AIC:
 
-```{r}
+```{r, eval = FALSE}
 rott_sfAIC <- stepAIC(coxph(Surv(start, end, death) ~ has_relapsed, data = rottrain_t,
                             x = TRUE, y = TRUE),
                       full_modelt_formula,
