@@ -1,7 +1,7 @@
 ---
 title: "Biostat M215 Final Project"
 author: "Rina Arputhasamy, Andrew Chuang, Carolyn Winskill, Kyle Wu"
-date: "2024-03-11"
+date: "2024-03-19"
 output: html_document
 ---
 
@@ -242,8 +242,27 @@ weiAFT_sbAIC <- stepAIC(survreg(full_model_formula,
                         full_model_formula,
                         direction = "backward", k = 2)
 ```
+#### Exponential AFT
 
-ADD more AFT variable selection here
+```{r}
+exAFT_sbAIC <- stepAIC(survreg(full_model_formula,
+                                data = rotterdam_train, dist="exponential",
+                                x = TRUE, y = TRUE),
+                        data = rotterdam_train,
+                        full_model_formula,
+                        direction = "backward", k = 2)
+```
+
+#### Lognormal AFT
+
+```{r}
+lognormAFT_sbAIC <- stepAIC(survreg(full_model_formula,
+                                data = rotterdam_train, dist="lognormal",
+                                x = TRUE, y = TRUE),
+                        data = rotterdam_train,
+                        full_model_formula,
+                        direction = "backward", k = 2)
+```
 
 ## Adding Relapse as Time-dependent Covariate
 
@@ -335,7 +354,7 @@ rownames(PA_stats) <- NULL
 print(PA_stats)
 ```
 
-### Calibration Plot for Cox PH:
+### Calibration Plots:
 
 ```{r}
 t <- rotterdam_train$dtime %>% mean
@@ -353,14 +372,73 @@ myCalPlotSettings <- function(model, legend.label = "Predicted survival", ...) {
 ```
 
 ```{r}
-myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction")
+fiveyear<-5*365
+tenyear<-10*365
+
+myCalPlotSettings5year <- function(model, legend.label = "Predicted survival", ...) {
+  pec::calPlot(model, time=fiveyear, data=rotterdam_test, method = "quantile",
+               q = 10, bars=TRUE, type="survival", pseudo=FALSE,
+               legend.legend = c(legend.label, "Observed frequencies"), ...)
+}
+
+myCalPlotSettings10year <- function(model, legend.label = "Predicted survival", ...) {
+  pec::calPlot(model, time=tenyear, data=rotterdam_test, method = "quantile",
+               q = 10, bars=TRUE, type="survival", pseudo=FALSE,
+               legend.legend = c(legend.label, "Observed frequencies"), ...)
+}
 ```
+
+## Weibull AFT Calibration Plots
+
+```{r}
+myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction")
+myCalPlotSettings5year(weiAFT_sbAIC, "Weibull AFT Prediction")
+myCalPlotSettings10year(weiAFT_sbAIC, "Weibull AFT Prediction")
+```
+
+## Exponential AFT Calibration Plots
+
+```{r}
+myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction")
+myCalPlotSettings5year(exAFT_sbAIC, "Exponential AFT Prediction")
+myCalPlotSettings10year(exAFT_sbAIC, "Exponential AFT Prediction")
+```
+
+## Lognormal AFT Calibration Plots
+
+```{r}
+myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction")
+myCalPlotSettings5year(lognormAFT_sbAIC, "Lognormal AFT Prediction")
+myCalPlotSettings10year(lognormAFT_sbAIC, "Lognormal AFT Prediction")
+```
+
+## Cox LASSO Calibration Plots
+
+```{r}
+myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",formula = full_model_formula)
+myCalPlotSettings5year(lasso_temp, "Cox LASSO Prediction",formula = full_model_formula)
+myCalPlotSettings10year(lasso_temp, "Cox LASSO Prediction",formula = full_model_formula)
+```
+## Cox Stepwise Forward AIC Calibration Plots
+
+```{r}
+myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction")
+myCalPlotSettings5year(rot_sfAIC, "Cox Stepwise Forward AIC Prediction")
+myCalPlotSettings10year(rot_sfAIC, "Cox Stepwise Forward AIC Prediction")
+```
+
+## Cox Stepwise Forward BIC Calibration Plots
+
+```{r}
+myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction")
+myCalPlotSettings5year(rot_sfBIC, "Cox Stepwise Forward BIC Prediction")
+myCalPlotSettings10year(rot_sfBIC, "Cox Stepwise Forward BIC Prediction")
+```
+
+## Cox PH Calibration Plot
 
 ```{r}
 myCalPlotSettings(fit.coxph, "Cox PH Prediction")
-```
-```{r}
-myCalPlotSettings(lasso_temp, "LASSO", formula = full_model_formula)
 ```
 
 ```{r}
@@ -368,9 +446,24 @@ calPlot(list("Cox Regression" = fit.coxph), time=t, data=rotterdam_test,
         type="risk")
 ```
 
+### GREENWOOD-NAM-D'AGOSTINO CALIBRATION TEST
 
+double check this code some more
+https://ncook.bwh.harvard.edu/assets/code101316_GND_test_replicable_example.R
 
+```{r}
+source(paste0(data_directory, "calibration_chisquare.R"))
 
+#calibration at 5 years
 
+#read the data
+d<-rotterdam_test
 
-CW: write function for calibration plot that can do both Cox and AFT models
+#we decided we are interested in calibration at 5 years,
+#so censor after 5 years
+adm.cens=4000
+d$fu.time <- pmin(d$futime, adm.cens)
+d$status <- ifelse(as.numeric(adm.cens < d$futime), 0, d$death)
+nonadm.cens=ifelse(fu.time<adm.cens & status==0,1,0)
+mean(d$status)
+```
