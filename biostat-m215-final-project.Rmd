@@ -24,6 +24,7 @@ library(pec)
 library(MASS)
 library(gtsummary)
 library(SurvMetrics)
+library(gt)
 
 data_directory <- "functions/"
 source(paste0(data_directory, "pam.survreg.update.R"))
@@ -162,6 +163,22 @@ summary(fit.lognormal)
 # R.squared and L.squared of the lognormal model
 pam.survreg(fit.lognormal, x.mat = rotterdam_train)
 concordance(fit.lognormal, timewt = "n/G2")$concordance
+```
+
+```{r}
+tbl3 <- rbind(data.frame(c(Model = "Cox PH", pam.coxph(fit.coxph), 
+  Concordance = concordance(fit.coxph, timewt = "n/G2")$concordance)), 
+  data.frame(c(Model = "Exponential AFT", pam.survreg(fit.exp, x.mat = rotterdam_train), 
+  Concordance = concordance(fit.exp, timewt = "n/G2")$concordance)),
+  data.frame(c(Model = "Weibull AFT", pam.survreg(fit.wei, x.mat = rotterdam_train), 
+  Concordance = concordance(fit.wei, timewt = "n/G2")$concordance)),
+  data.frame(c(Model = "Lognormal AFT", pam.survreg(fit.lognormal, x.mat = rotterdam_train),
+  Concordance = concordance(fit.lognormal, timewt = "n/G2")$concordance))) %>%
+  gt::gt() %>% gt::tab_header("Table 3: Prediction Accuracy Measures") %>%
+  tab_style(style = cell_text(weight = "bold"),
+                locations = list(cells_column_labels(), cells_title()))
+#gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
+#tbl3
 ```
 
 ## Model Selection
