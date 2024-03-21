@@ -437,7 +437,7 @@ tbl3 <- PA_stats %>% gt() %>% tab_header("Table 3: Prediction Accuracy Measures 
   tab_style(style = cell_text(weight = "bold"),
                 locations = list(cells_column_labels(), cells_title())) %>%
   tab_footnote(
-    footnote = "Concordance calculated as Uno's c-statistic",
+    footnote = "Concordance calculated as Uno's C-statistic",
     locations = cells_column_labels(columns = Concordance)
   )
 gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
