@@ -397,10 +397,10 @@ rownames(PA_stats) <- NULL
 print(PA_stats)
 ```
 
-### Calibration Plots:
+### Calibration Plots and Chi-Square Test:
 
 ```{r}
-t <- rotterdam_train$dtime %>% mean
+#t <- rotterdam_train$dtime %>% mean
 fiveyear<-5*365
 tenyear<-10*365
 # link method to SurvMetrics function because calPlot depends on calling 
@@ -416,75 +416,115 @@ myCalPlotSettings <- function(model, legend.label = "Predicted survival",
 }
 ```
 
-## Weibull AFT Calibration Plots
+```{r}
+ND.chisquare.test<-function(data){
+  data$diff<-(data$Model.1.Obs-data$Model.1.Pred)^2/(data$Model.1.Pred*(1-data$Model.1.Pred))
+  TS<-sum(data$diff)
+  pvalue<-1-pchisq(TS,nrow(data)-1)
+  
+  results<-c(round(TS,3),round(pvalue,3))
+  print(results)
+}
+```
+
+## Weibull AFT Calibration
 
 ```{r}
-myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = t)
+#myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = t)
 myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = fiveyear)
 myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = tenyear)
+```
+
+```{r}
+weiAFT_sbAIC.5year<-as.data.frame(myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = fiveyear)$plotFrames)
+ND.chisquare.test(weiAFT_sbAIC.5year)
+
+weiAFT_sbAIC.10year<-as.data.frame(myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = tenyear)$plotFrames)
+ND.chisquare.test(weiAFT_sbAIC.10year)
 ```
 
 ## Exponential AFT Calibration Plots
 
 ```{r}
-myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = t)
+#myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = t)
 myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = fiveyear)
 myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = tenyear)
+```
+
+```{r}
+exAFT_sbAIC.5year<-as.data.frame(myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = fiveyear)$plotFrames)
+ND.chisquare.test(exAFT_sbAIC.5year)
+
+exAFT_sbAIC.10year<-as.data.frame(myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = tenyear)$plotFrames)
+ND.chisquare.test(exAFT_sbAIC.10year)
 ```
 
 ## Lognormal AFT Calibration Plots
 
 ```{r}
-myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = t)
+#myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = t)
 myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = fiveyear)
 myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = tenyear)
+```
+
+```{r}
+lognormAFT_sbAIC.5year<-as.data.frame(myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = fiveyear)$plotFrames)
+ND.chisquare.test(lognormAFT_sbAIC.5year)
+
+lognormAFT_sbAIC.10year<-as.data.frame(myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = tenyear)$plotFrames)
+ND.chisquare.test(lognormAFT_sbAIC.10year)
 ```
 
 ## Cox LASSO Calibration Plots
 
 ```{r}
-myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
-                  formula = full_model_formula, time = t)
+# myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
+#                   formula = full_model_formula, time = t)
 myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
                   formula = full_model_formula, time = fiveyear)
 myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
                   formula = full_model_formula, time = tenyear)
 ```
 
+```{r}
+lasso_temp.5year<-as.data.frame(myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
+                  formula = full_model_formula, time = fiveyear)$plotFrames)
+ND.chisquare.test(lasso_temp.5year)
+
+lasso_temp.10year<-as.data.frame(myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
+                  formula = full_model_formula, time = tenyear)$plotFrames)
+ND.chisquare.test(lasso_temp.10year)
+```
+
 ## Cox Stepwise Forward AIC Calibration Plots
 
 ```{r}
-myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = t)
+#myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = t)
 myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = fiveyear)
 myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = tenyear)
+```
+
+
+```{r}
+rot_sfAIC.5year<-as.data.frame(myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = fiveyear)$plotFrames)
+ND.chisquare.test(rot_sfAIC.5year)
+
+rot_sfAIC.10year<-as.data.frame(myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = tenyear)$plotFrames)
+ND.chisquare.test(rot_sfAIC.10year)
 ```
 
 ## Cox Stepwise Forward BIC Calibration Plots
 
 ```{r}
-myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = t)
+#myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = t)
 myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = fiveyear)
 myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = tenyear)
 ```
 
-### GREENWOOD-NAM-D'AGOSTINO CALIBRATION TEST
-
-double check this code some more
-https://ncook.bwh.harvard.edu/assets/code101316_GND_test_replicable_example.R
-
 ```{r}
-source(paste0(data_directory, "calibration_chisquare.R"))
+rot_sfBIC.5year<-as.data.frame(myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = fiveyear)$plotFrames)
+ND.chisquare.test(rot_sfAIC.5year)
 
-#calibration at 5 years
-
-#read the data
-d<-rotterdam_test
-
-#we decided we are interested in calibration at 5 years,
-#so censor after 5 years
-adm.cens=4000
-d$fu.time <- pmin(d$futime, adm.cens)
-d$status <- ifelse(as.numeric(adm.cens < d$futime), 0, d$death)
-nonadm.cens=ifelse(fu.time<adm.cens & status==0,1,0)
-mean(d$status)
+rot_sfBIC.10year<-as.data.frame(myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = tenyear)$plotFrames)
+ND.chisquare.test(rot_sfBIC.10year)
 ```
