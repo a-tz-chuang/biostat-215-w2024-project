@@ -397,6 +397,53 @@ rownames(PA_stats) <- NULL
 print(PA_stats)
 ```
 
+```{r}
+R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
+  as.numeric(unlist(pam.coxph(x)))
+}) %>% 
+  do.call(rbind, .) %>%
+  # cannot compute R2/L2 for time-dependent models?
+#  rbind(matrix(rep(NA, 4), 2, 2)) %>% 
+  rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2, .) %>% 
+  as.data.frame()
+colnames(R2L2_stats) <- c("R squared", "L squared")
+PA_stats <- data.frame(
+  Model = c(
+    "Weibull AFT, Stepwise Backward via AIC",
+    "Exponential AFT, Stepwise Backward via AIC",
+    "Lognormal AFT, Stepwise Backward via AIC",
+    "Cox Regression Stepwise Forward Selection via AIC",
+    "Cox Regression Stepwise Forward Selection via BIC",
+    "Cox Regression LASSO Estimate (10-fold CV)"
+  ),
+  Concordance = c(
+    concordance(rot_sfAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(rot_sfBIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(lasso_temp, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(weiAFT_sbAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(exAFT_sbAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(lognormAFT_sbAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance
+  ),
+  R2L2_stats
+)
+rownames(PA_stats) <- NULL
+tbl3 <- PA_stats %>% gt() %>% tab_header("Table 3: Prediction Accuracy Measures on Test Data") %>%
+  tab_style(style = cell_text(weight = "bold"),
+                locations = list(cells_column_labels(), cells_title())) %>%
+  tab_footnote(
+    footnote = "Concordance calculated as Uno's c-statistic",
+    locations = cells_column_labels(columns = Concordance)
+  )
+gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
+#tbl3
+```
+
 ### Calibration Plots and Chi-Square Test:
 
 ```{r}
@@ -422,7 +469,7 @@ ND.chisquare.test<-function(data){
   TS<-sum(data$diff)
   pvalue<-1-pchisq(TS,nrow(data)-1)
   
-  results<-c(round(TS,3),round(pvalue,3))
+  results<-c(TS = round(TS,3), pvalue = round(pvalue,5))
   print(results)
 }
 ```
@@ -528,3 +575,29 @@ ND.chisquare.test(rot_sfAIC.5year)
 rot_sfBIC.10year<-as.data.frame(myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = tenyear)$plotFrames)
 ND.chisquare.test(rot_sfBIC.10year)
 ```
+
+```{r}
+a <- rbind(c(yr5 = ND.chisquare.test(weiAFT_sbAIC.5year), yr10 = ND.chisquare.test(weiAFT_sbAIC.10year)), 
+           c(ND.chisquare.test(exAFT_sbAIC.5year),  ND.chisquare.test(exAFT_sbAIC.10year)),
+           c(ND.chisquare.test(lognormAFT_sbAIC.5year), ND.chisquare.test(lognormAFT_sbAIC.10year)), c(ND.chisquare.test(lasso_temp.5year), ND.chisquare.test(lasso_temp.10year)), c(ND.chisquare.test(rot_sfAIC.5year), ND.chisquare.test(rot_sfAIC.10year)), c(ND.chisquare.test(rot_sfAIC.5year), ND.chisquare.test(rot_sfBIC.10year)))
+tbl4 <- data.frame(cbind(Model = c("Weibull AFT", "Exponential AFT", "Lognormal AFT", "Cox LASSO",
+  "Cox Forward AIC", "Cox Forward BIC"), a)) %>% gt() %>%
+    tab_spanner(
+    label = "5 Year",
+    columns = c(
+      yr5.TS, yr5.pvalue)) %>%
+  tab_spanner(
+    label = "10 Year",
+    columns = c(
+      yr10.TS, yr10.pvalue)) %>%
+  cols_label(yr5.TS = "Test Statistic",
+             yr10.TS = "Test Statistic",
+             yr5.pvalue = "p-value", 
+             yr10.pvalue = "p-value") %>% 
+  tab_header("Table 4: Calibration Chi-Squared Tests") %>%
+  tab_style(style = cell_text(weight = "bold"),
+                locations = list(cells_column_labels(), cells_title(), cells_column_spanners()))
+gt::gtsave(tbl4, file = file.path(getwd(), "tbl4.png"))
+tbl4
+```
+
