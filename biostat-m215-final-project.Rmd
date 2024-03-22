@@ -288,9 +288,15 @@ exAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(exAFT_sbAIC,
                                                    x.mat = rotterdam_train)))
 lognormAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(lognormAFT_sbAIC,
                                                        x.mat = rotterdam_train)))
-R2L2_stats <- rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2) %>% 
-  as.data.frame()
+R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
+  as.numeric(unlist(pam.coxph(x)))
+}) %>% 
+  do.call(rbind, .) %>%
+  # cannot compute R2/L2 for time-dependent models?
+  #  rbind(matrix(rep(NA, 4), 2, 2)) %>% 
+  rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2, .)
 colnames(R2L2_stats) <- c("R squared", "L squared")
+rownames(R2L2_stats) <- NULL
 PA_stats <- data.frame(
   Model = c(
     "Weibull AFT, Stepwise Backward via AIC",
@@ -324,7 +330,7 @@ tbl3 <- PA_stats %>% gt() %>% tab_header("Table 3: Prediction Accuracy Measures 
     footnote = "Concordance calculated as Uno's C-statistic",
     locations = cells_column_labels(columns = Concordance)
   )
-#gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
+gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
 tbl3
 ```
 
@@ -473,8 +479,11 @@ tbl4 <- data.frame(cbind(Model = c("Weibull AFT", "Exponential AFT", "Lognormal 
   tab_header("Table 4: Calibration Chi-Squared Tests") %>%
   tab_style(style = cell_text(weight = "bold"),
                 locations = list(cells_column_labels(), cells_title(), cells_column_spanners()))
-gt::gtsave(tbl4, file = file.path(getwd(), "tbl4.png"))
 tbl4
+```
+
+```{r, eval = FALSE}
+gt::gtsave(tbl4, file = file.path(getwd(), "tbl4.png"))
 ```
 
 ## Risk Score vs Time to Event Plots
