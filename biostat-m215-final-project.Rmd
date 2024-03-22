@@ -307,17 +307,17 @@ PA_stats <- data.frame(
     "Cox Regression LASSO Estimate (10-fold CV)"
   ),
   Concordance = c(
-    concordance(rot_sfAIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(rot_sfBIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(lasso_temp, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
     concordance(weiAFT_sbAIC, timewt = "n/G2",
                 newdata = rotterdam_test)$concordance,
     concordance(exAFT_sbAIC, timewt = "n/G2",
                 newdata = rotterdam_test)$concordance,
     concordance(lognormAFT_sbAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(rot_sfAIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(rot_sfBIC, timewt = "n/G2",
+                newdata = rotterdam_test)$concordance,
+    concordance(lasso_temp, timewt = "n/G2",
                 newdata = rotterdam_test)$concordance
   ),
   R2L2_stats
