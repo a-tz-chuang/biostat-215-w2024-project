@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Libraries: 
 
-```{r}
+```{r message=FALSE}
 #Relevant libraries:
 library(survival)
 library(descr)
@@ -70,7 +70,7 @@ tbl1 <- c("mean", "sd", "median", "min", "max") %>%
   modify_footnote(everything() ~ NA) %>% 
   modify_caption("**Table 1: Continuous Patient Characteristics**")
 #gt::gtsave(as_gt(tbl1), file = file.path(getwd(), "tbl1.png"))
-#tbl1
+tbl1
 ```
 
 ```{r}
@@ -85,7 +85,7 @@ tbl2 <- rot.cat %>%
   ) %>%
   modify_caption("**Table 2: Categorical Patient Characteristics**")
 #gt::gtsave(as_gt(tbl2), file = file.path(getwd(), "tbl2.png"))
-#tbl2
+tbl2
 ```
 
 
@@ -101,14 +101,12 @@ plot(km,conf.int=F,mark.time=F,
      main="Kaplan-Meier estimates of time to death")
 ```
 
-CW: make plot more visually appealing? add KM plots stratified by predictors like menopausal status, tumor size, differentiation grade, hormonal treatment?
 
 ## Log-rank tests 
 
 ```{r}
 survdiff(Surv(dtime, death)~meno,data=rotterdam)
 ```
-CW: need univariate Cox models to get unadjusted hazard ratios?
 
 ## Full Models and Prediction Accuracy Measures 
 
@@ -163,22 +161,6 @@ summary(fit.lognormal)
 # R.squared and L.squared of the lognormal model
 pam.survreg(fit.lognormal, x.mat = rotterdam_train)
 concordance(fit.lognormal, timewt = "n/G2")$concordance
-```
-
-```{r}
-tbl3 <- rbind(data.frame(c(Model = "Cox PH", pam.coxph(fit.coxph), 
-  Concordance = concordance(fit.coxph, timewt = "n/G2")$concordance)), 
-  data.frame(c(Model = "Exponential AFT", pam.survreg(fit.exp, x.mat = rotterdam_train), 
-  Concordance = concordance(fit.exp, timewt = "n/G2")$concordance)),
-  data.frame(c(Model = "Weibull AFT", pam.survreg(fit.wei, x.mat = rotterdam_train), 
-  Concordance = concordance(fit.wei, timewt = "n/G2")$concordance)),
-  data.frame(c(Model = "Lognormal AFT", pam.survreg(fit.lognormal, x.mat = rotterdam_train),
-  Concordance = concordance(fit.lognormal, timewt = "n/G2")$concordance))) %>%
-  gt::gt() %>% gt::tab_header("Table 3: Prediction Accuracy Measures") %>%
-  tab_style(style = cell_text(weight = "bold"),
-                locations = list(cells_column_labels(), cells_title()))
-#gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
-#tbl3
 ```
 
 ## Model Selection
@@ -243,7 +225,7 @@ concordance(rot_sbBIC, timewt = "n/G2")$concordance
 
 We fit a LASSO model (selecting penalty via 10-fold cross-validation) and attach the resulting coefficients to a coxph object so that we can call survival::concordance:
 
-```{r}
+```{r warning=FALSE}
 library(ncvreg)
 X <- rotterdam_train[, c("age", "meno", "size", "grade", "nodes", "pgr",
                          "er", "hormon", "chemo")]
@@ -297,114 +279,16 @@ lognormAFT_sbAIC <- stepAIC(survreg(full_model_formula,
                         direction = "backward", k = 2)
 ```
 
-## Adding Relapse as Time-dependent Covariate
-
-Suppose we add the time-dependent relapse indicator as a covariate.
-
-```{r}
-cut_points <- sort(unique(rotterdam_train[rotterdam_train$death == 1,]$dtime))
-rottrain_t <- survSplit(Surv(dtime, death) ~ ., data = rotterdam_train,
-                   cut = cut_points, end = "end", start = "start")
-rottrain_t$has_relapsed <- rottrain_t$end >= rottrain_t$rtime & rottrain_t$recur == 1
-full_modelt_formula <- Surv(start, end, death) ~ age + meno + size + 
-  grade + nodes + pgr + 
-  er + hormon + chemo + has_relapsed
-rott_coxph <- coxph(full_modelt_formula, data = rottrain_t, x = TRUE, y = TRUE)
-```
-
-Cox multiplicative hazards model backward selection via BIC:
-
-```{r, eval = FALSE}
-rott_sbBIC <- stepAIC(rott_coxph,
-                      full_modelt_formula,
-                      direction = "backward", k = log(n))
-```
-
-Cox multiplicative hazards model forward selection via AIC:
-
-```{r, eval = FALSE}
-rott_sfAIC <- stepAIC(coxph(Surv(start, end, death) ~ has_relapsed, data = rottrain_t,
-                            x = TRUE, y = TRUE),
-                      full_modelt_formula,
-                      direction = "forward", k = 2)
-# pam.coxph(rott_sfAIC)
-```
-
-```{r}
-# model selection may take a while, resulting models are below
-rott_sbBIC <- coxph(Surv(start, end, death) ~ age + size + nodes + pgr + has_relapsed,
-                    data = rottrain_t, x = TRUE, y = TRUE)
-rott_sfAIC <- coxph(Surv(start, end, death) ~ has_relapsed + age + nodes + pgr + size + chemo + grade,
-                    data = rottrain_t, x = TRUE, y = TRUE)
-```
-
-```{r}
-cut_points <- sort(unique(rotterdam_train[rotterdam_test$death == 1,]$dtime))
-rottest_t <- survSplit(Surv(dtime, death) ~ ., data = rotterdam_test,
-                   cut = cut_points, end = "end", start = "start")
-rottest_t$has_relapsed <- rottest_t$end >= rottest_t$rtime & rottest_t$recur == 1
-```
-
 ## PAM Evaluation on Test Set
 
-```{r}
+```{r warning=FALSE}
 weiAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(weiAFT_sbAIC,
                                                    x.mat = rotterdam_train)))
 exAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(exAFT_sbAIC,
                                                    x.mat = rotterdam_train)))
 lognormAFT_sbAIC_R2L2 <- as.numeric(unlist(pam.survreg(lognormAFT_sbAIC,
                                                        x.mat = rotterdam_train)))
-R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
-  as.numeric(unlist(pam.coxph(x)))
-}) %>% 
-  do.call(rbind, .) %>%
-  # cannot compute R2/L2 for time-dependent models?
-  rbind(matrix(rep(NA, 4), 2, 2)) %>% 
-  rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2, .) %>% 
-  as.data.frame()
-colnames(R2L2_stats) <- c("R2_squared", "L2_squared")
-PA_stats <- data.frame(
-  model = c(
-    "Weibull AFT, Stepwise Backward via AIC",
-    "Exponential AFT, Stepwise Backward via AIC",
-    "Lognormal AFT, Stepwise Backward via AIC",
-    "Cox Regression Stepwise Forward Selection via AIC",
-    "Cox Regression Stepwise Forward Selection via BIC",
-    "Cox Regression LASSO Estimate (10-fold CV)",
-    "Cox MH (Time-dependent Relapse), Stepwise Backward via BIC",
-    "Cox MH (Time-dependent Relapse), Stepwise Forward via AIC"
-  ),
-  C_type = c("uno", "uno", "uno", "uno", "uno", "uno", "harrel", "harrel"),
-  C_value = c(
-    concordance(rot_sfAIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(rot_sfBIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(lasso_temp, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(weiAFT_sbAIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(exAFT_sbAIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(lognormAFT_sbAIC, timewt = "n/G2",
-                newdata = rotterdam_test)$concordance,
-    concordance(rott_sbBIC, newdata = rottest_t)$concordance,
-    concordance(rott_sfAIC, newdata = rottest_t)$concordance
-  ),
-  R2L2_stats
-)
-rownames(PA_stats) <- NULL
-print(PA_stats)
-```
-
-```{r}
-R2L2_stats <- lapply(list(rot_sfAIC, rot_sfBIC, lasso_temp), function(x) {
-  as.numeric(unlist(pam.coxph(x)))
-}) %>% 
-  do.call(rbind, .) %>%
-  # cannot compute R2/L2 for time-dependent models?
-#  rbind(matrix(rep(NA, 4), 2, 2)) %>% 
-  rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2, .) %>% 
+R2L2_stats <- rbind(weiAFT_sbAIC_R2L2, exAFT_sbAIC_R2L2, lognormAFT_sbAIC_R2L2) %>% 
   as.data.frame()
 colnames(R2L2_stats) <- c("R squared", "L squared")
 PA_stats <- data.frame(
@@ -440,14 +324,13 @@ tbl3 <- PA_stats %>% gt() %>% tab_header("Table 3: Prediction Accuracy Measures 
     footnote = "Concordance calculated as Uno's C-statistic",
     locations = cells_column_labels(columns = Concordance)
   )
-gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
-#tbl3
+#gt::gtsave(tbl3, file = file.path(getwd(), "tbl3.png"))
+tbl3
 ```
 
-### Calibration Plots and Chi-Square Test:
+## Calibration Plots and Chi-Square Test:
 
 ```{r}
-#t <- rotterdam_train$dtime %>% mean
 fiveyear<-5*365
 tenyear<-10*365
 # link method to SurvMetrics function because calPlot depends on calling 
@@ -474,10 +357,9 @@ ND.chisquare.test<-function(data){
 }
 ```
 
-## Weibull AFT Calibration
+### Weibull AFT Calibration
 
 ```{r}
-#myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = t)
 myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = fiveyear)
 myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT Prediction", time = tenyear)
 ```
@@ -490,10 +372,9 @@ weiAFT_sbAIC.10year<-as.data.frame(myCalPlotSettings(weiAFT_sbAIC, "Weibull AFT 
 ND.chisquare.test(weiAFT_sbAIC.10year)
 ```
 
-## Exponential AFT Calibration Plots
+### Exponential AFT Calibration Plots
 
 ```{r}
-#myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = t)
 myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = fiveyear)
 myCalPlotSettings(exAFT_sbAIC, "Exponential AFT Prediction", time = tenyear)
 ```
@@ -506,10 +387,9 @@ exAFT_sbAIC.10year<-as.data.frame(myCalPlotSettings(exAFT_sbAIC, "Exponential AF
 ND.chisquare.test(exAFT_sbAIC.10year)
 ```
 
-## Lognormal AFT Calibration Plots
+### Lognormal AFT Calibration Plots
 
 ```{r}
-#myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = t)
 myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = fiveyear)
 myCalPlotSettings(lognormAFT_sbAIC, "Lognormal AFT Prediction", time = tenyear)
 ```
@@ -522,11 +402,9 @@ lognormAFT_sbAIC.10year<-as.data.frame(myCalPlotSettings(lognormAFT_sbAIC, "Logn
 ND.chisquare.test(lognormAFT_sbAIC.10year)
 ```
 
-## Cox LASSO Calibration Plots
+### Cox LASSO Calibration Plots
 
 ```{r}
-# myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
-#                   formula = full_model_formula, time = t)
 myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
                   formula = full_model_formula, time = fiveyear)
 myCalPlotSettings(lasso_temp, "Cox LASSO Prediction",
@@ -543,10 +421,9 @@ lasso_temp.10year<-as.data.frame(myCalPlotSettings(lasso_temp, "Cox LASSO Predic
 ND.chisquare.test(lasso_temp.10year)
 ```
 
-## Cox Stepwise Forward AIC Calibration Plots
+### Cox Stepwise Forward AIC Calibration Plots
 
 ```{r}
-#myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = t)
 myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = fiveyear)
 myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forward AIC Prediction", time = tenyear)
 ```
@@ -560,17 +437,16 @@ rot_sfAIC.10year<-as.data.frame(myCalPlotSettings(rot_sfAIC, "Cox Stepwise Forwa
 ND.chisquare.test(rot_sfAIC.10year)
 ```
 
-## Cox Stepwise Forward BIC Calibration Plots
+### Cox Stepwise Forward BIC Calibration Plots
 
 ```{r}
-#myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = t)
 myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = fiveyear)
 myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = tenyear)
 ```
 
 ```{r}
 rot_sfBIC.5year<-as.data.frame(myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = fiveyear)$plotFrames)
-ND.chisquare.test(rot_sfAIC.5year)
+ND.chisquare.test(rot_sfBIC.5year)
 
 rot_sfBIC.10year<-as.data.frame(myCalPlotSettings(rot_sfBIC, "Cox Stepwise Forward BIC Prediction", time = tenyear)$plotFrames)
 ND.chisquare.test(rot_sfBIC.10year)
@@ -579,7 +455,7 @@ ND.chisquare.test(rot_sfBIC.10year)
 ```{r}
 a <- rbind(c(yr5 = ND.chisquare.test(weiAFT_sbAIC.5year), yr10 = ND.chisquare.test(weiAFT_sbAIC.10year)), 
            c(ND.chisquare.test(exAFT_sbAIC.5year),  ND.chisquare.test(exAFT_sbAIC.10year)),
-           c(ND.chisquare.test(lognormAFT_sbAIC.5year), ND.chisquare.test(lognormAFT_sbAIC.10year)), c(ND.chisquare.test(lasso_temp.5year), ND.chisquare.test(lasso_temp.10year)), c(ND.chisquare.test(rot_sfAIC.5year), ND.chisquare.test(rot_sfAIC.10year)), c(ND.chisquare.test(rot_sfAIC.5year), ND.chisquare.test(rot_sfBIC.10year)))
+           c(ND.chisquare.test(lognormAFT_sbAIC.5year), ND.chisquare.test(lognormAFT_sbAIC.10year)), c(ND.chisquare.test(lasso_temp.5year), ND.chisquare.test(lasso_temp.10year)), c(ND.chisquare.test(rot_sfAIC.5year), ND.chisquare.test(rot_sfAIC.10year)), c(ND.chisquare.test(rot_sfBIC.5year), ND.chisquare.test(rot_sfBIC.10year)))
 tbl4 <- data.frame(cbind(Model = c("Weibull AFT", "Exponential AFT", "Lognormal AFT", "Cox LASSO",
   "Cox Forward AIC", "Cox Forward BIC"), a)) %>% gt() %>%
     tab_spanner(
@@ -601,7 +477,7 @@ gt::gtsave(tbl4, file = file.path(getwd(), "tbl4.png"))
 tbl4
 ```
 
-### Risk Score vs Time to Event Plots
+## Risk Score vs Time to Event Plots
 
 ```{r}
 rotterdam_test$censor<-ifelse(rotterdam_test$death==1,"observed","censored")
