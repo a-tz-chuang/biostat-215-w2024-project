@@ -487,6 +487,7 @@ rotterdam_test$RS.weiAFT_sbAIC<-predict(weiAFT_sbAIC,newdata=rotterdam_test,type
 ggplot(rotterdam_test,aes(x=RS.weiAFT_sbAIC*(-1),y=dtime,color=censor)) + 
   geom_point() + theme_bw() + geom_smooth(color="black",method="lm") +
   xlab("Risk Score") + ylab("Follow-Up Time") + ggtitle("Weibull AFT Prediction")
+ggsave("weibull_riskscore.png")
 ```
 
 ```{r}
@@ -511,6 +512,7 @@ rotterdam_test$RS.lasso_temp<-predict(lasso_temp,newdata=rotterdam_test,type="lp
 ggplot(rotterdam_test,aes(x=RS.lasso_temp,y=dtime,color=censor)) + 
   geom_point() + theme_bw() + geom_smooth(color="black",method="lm") +
   xlab("Risk Score") + ylab("Follow-Up Time") + ggtitle("Cox LASSO Prediction")
+ggsave("coxlasso_riskscore.png")
 ```
 
 ```{r}
@@ -528,3 +530,4 @@ ggplot(rotterdam_test,aes(x=RS.rot_sfBIC,y=dtime,color=censor)) +
   geom_point() + theme_bw() + geom_smooth(color="black",method="lm") +
   xlab("Risk Score") + ylab("Follow-Up Time") + ggtitle("Cox Stepwise Forward BIC Prediction")
 ```
+
